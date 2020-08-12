@@ -46,7 +46,6 @@ varlog3				=  "<html>Cambiar</html>"
 Call PanelInteraccion()
 Call IngresoNumero()
 
-
 Call esperaCarga
 'Call verificacionSolicitud
 'Call ingresoNum
@@ -59,7 +58,7 @@ Call TipoEnvio
 Call GeneracionOrden
 Call EnviarOrden()
 If str_metodo_entrega <> "Delivery" Then
-    Call PagoManual()
+    'Call PagoManual()
 	Call GestionLogistica
    Call EmpujeOrden
    Call OrdenCerrado
@@ -70,6 +69,7 @@ Sub esperaCarga
 	wait 6
 End Sub
 Sub PanelInteraccion()
+
 	t = 0
 	While (JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Panel de Interacción").JavaButton("Ver Detalles").Exist) = False
 		wait 1
@@ -678,6 +678,7 @@ Sub RecursosCambio()
 	
 	
 	JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Negociar Configuración").JavaButton("Validar").Click
+
 	Call Carga()
 	wait 2		
 	varlog2 = "<html>Falta el atributo obligatorio Número IMEI de Dispositivo. Ingres"
@@ -846,9 +847,28 @@ Sub RecursosCambio()
 	JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Negociar Configuración").JavaButton("Validar").Click
 	wait 20
 	
-'	If True Then
-'		
-'	End If
+    	If JavaWindow("Ejecutivo de interacción").JavaDialog("Mensajes de validación").JavaTable("SearchJTable_3").Exist = True Then
+			varlog = JavaWindow("Ejecutivo de interacción").JavaDialog("Mensajes de validación").JavaTable("SearchJTable_3").GetCellData(0,1)
+			
+			varlog2= Replace(varlog, "<html>","") 
+			varlog2= Replace(varlog, "</html>","")
+			varlog = Instr(1,varlog,"La tarjeta SIM no es soportada por el nuevo equipo,&#8203; por favor cambie la tarjeta SIM. (Detectado en Dispositivo).")
+			wait 1
+			If (varlog = "7") Then
+			DataTable("s_Resultado", dtLocalSheet) = "Fallido"
+			'DataTable("s_Resultado", dtLocalSheet) = "Mensaje de Validación"
+			DataTable("s_Detalle", dtLocalSheet) = varlog2
+			Reporter.ReportEvent micFail, DataTable("s_Resultado", dtLocalSheet), DataTable("s_Detalle", dtLocalSheet)
+			JavaWindow("Ejecutivo de interacción").CaptureBitmap RutaEvidencias() & "MensajeValidacion.png", True
+			imagenToWord "Fallo Tarjeta Sim no soportada",RutaEvidencias() & "MensajeValidacion.png"
+			JavaWindow("Ejecutivo de interacción").JavaDialog("Mensajes de validación").JavaButton("Cerrar_2").Click
+			wait 3
+			Call CancelarOrden()
+			
+			End If
+		End If
+	wait 1
+
 	
 	Call Carga()
 	
@@ -946,17 +966,18 @@ End Sub
 Sub acuerdoFacturacion
 ''Validar lo adicional en producción Pelao
 
-       While JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Negociar Distribución_2").JavaEdit("Nombre y Dirección de").Exist = False
-       	wait 1
-       Wend
-       wait 2
-		Dim textDis
-		textDis=JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Negociar Distribución_2").JavaEdit("Nombre y Dirección de").GetROProperty("text")
-		While textDis=""
-			wait 3
-			textDis=JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Negociar Distribución_2").JavaEdit("Nombre y Dirección de").GetROProperty("text")
-		Wend
-	wait 1
+    While JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Negociar Distribución_2").JavaEdit("Nombre y Dirección de").Exist =False
+    	wait 1
+    Wend
+    wait 1
+    Dim text
+    text =JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Negociar Distribución_2").JavaEdit("Nombre y Dirección de").GetROProperty("text")
+    While text =""
+    	wait 3
+    	text =JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Negociar Distribución_2").JavaEdit("Nombre y Dirección de").GetROProperty("text")
+    Wend
+	   wait 2
+  
 	JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Negociar Distribución_2").JavaRadioButton("Única factura").Set "ON"
 	wait 2
 	JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Negociar Distribución_2").JavaEdit("ID del Acuerdo de Facturación:").WaitProperty "value", Not Empty, 30000 @@ hightlight id_;_20967626_;_script infofile_;_ZIP::ssf87.xml_;_
@@ -977,7 +998,7 @@ Sub pagoInmediato
 		Dim textId
 		textId=JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Negociar Pago (Orden 599306A").JavaEdit("ID del cliente:").GetROProperty("text")
 		While textId=""
-			wait 1
+			wait 3
 			textId=JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Negociar Pago (Orden 599306A").JavaEdit("ID del cliente:").GetROProperty("text")
 		Wend
 		
@@ -1097,7 +1118,7 @@ Sub pagoInmediato
 		If rs = DataTable("e_MedioPago", dtLocalSheet) Then
 				JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Pago Inmediato").JavaList("Medio de pago").Select DataTable("e_MedioPago", dtLocalSheet)
 			    wait 1
-					JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Pago Inmediato").JavaList("Cantidad de cuotas:").Select DataTable("e_Cant_Cuota" , dtaLocalSheet)
+					JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Pago Inmediato").JavaList("Cantidad de cuotas:").Select DataTable( "e_Cuotas", dtLocalSheet)
 					wait 1
 					JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Pago Inmediato").JavaButton("Calcular").Click
 					JavaWindow("Ejecutivo de interacción").CaptureBitmap RutaEvidencias() &Num_Iter&"_"&"Financiamiento"&".png" , True
@@ -1152,6 +1173,37 @@ Sub TipoEnvio()
     While JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Negociar dirección de").JavaRadioButton("En tienda").Exist = false
     	wait 1
     Wend
+    wait 1
+    If JavaWindow("Ejecutivo de interacción").JavaDialog("Mensaje").JavaStaticText("Seleccione método de entrega.(").Exist = True Then
+    	JavaWindow("Ejecutivo de interacción").CaptureBitmap RutaEvidencias() & "ErrorUsu.png", True
+		imagenToWord "Error Usuario",RutaEvidencias() & "ErrorUsu.png"
+    	wait 1 
+    	JavaWindow("Ejecutivo de interacción").JavaDialog("Mensaje").JavaButton("OK").Click
+    	wait 3
+		JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Negociar dirección de").JavaButton("Cancelar acción de orden").Click
+
+			While  JavaWindow("Ejecutivo de interacción").JavaDialog("Seleccionar una opción").JavaStaticText("Se cancelará esta orden").Exist = False
+				wait 1
+			Wend
+				wait 1
+			JavaWindow("Ejecutivo de interacción").JavaDialog("Seleccionar una opción").JavaButton("Sí").Click
+			
+			While JavaWindow("Ejecutivo de interacción").JavaDialog("Negociar dirección de").JavaTable("Acciones de orden que").Exist = False
+				wait 1
+			Wend
+				wait 1
+			JavaWindow("Ejecutivo de interacción").JavaDialog("Negociar dirección de").JavaButton("Aceptar").Click
+			While JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Orden 2272771A").JavaEdit("TextAreaNative$1").Exist = False
+				wait 1
+			Wend
+				wait 1
+			JavaWindow("Ejecutivo de interacción").CaptureBitmap RutaEvidencias() & "ordenError.png", True
+			imagenToWord "Orden Cancelada",RutaEvidencias() & "ordenError.png"
+			wait 3 
+			ExitAction
+
+    End If 
+    
 	Select Case str_metodo_entrega
 		Case "En tienda"
 				JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Negociar dirección de").JavaRadioButton("En tienda").Set "ON"
@@ -1455,6 +1507,30 @@ Sub GeneracionOrden()
 '	End If
 '	'Call EnviarOrden()
 	
+End Sub
+Sub CancelarOrden()
+			JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Negociar Configuración").JavaButton("Cancelar acción de orden").Click
+
+			While  JavaWindow("Ejecutivo de interacción").JavaDialog("Seleccionar una opción").JavaStaticText("Se cancelará esta orden").Exist = False
+				wait 1
+			Wend
+				wait 1
+			JavaWindow("Ejecutivo de interacción").JavaDialog("Seleccionar una opción").JavaButton("Sí").Click
+			
+			While JavaWindow("Ejecutivo de interacción").JavaDialog("Negociar Configuración_3").JavaTable("Acciones de orden que").Exist = False
+				wait 1
+			Wend
+				wait 1
+			JavaWindow("Ejecutivo de interacción").JavaDialog("Negociar Configuración_3").JavaButton("Aceptar").Click
+			While JavaWindow("Ejecutivo de interacción").JavaInternalFrame("Orden 2272771A").JavaEdit("TextAreaNative$1").Exist = False
+				wait 1
+			Wend
+				wait 1
+			JavaWindow("Ejecutivo de interacción").CaptureBitmap RutaEvidencias() & "ordenError.png", True
+			imagenToWord "Orden Cancelada",RutaEvidencias() & "ordenError.png"
+			wait 3 
+			ExitAction
+
 End Sub
 Sub EnviarOrden()
 'Bucle que espera "Enviar orden"
@@ -2057,7 +2133,10 @@ Sub cerrarVentanas
 End Sub
 
 
-	
+
+
+
+
 	
 
 
